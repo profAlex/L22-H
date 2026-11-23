@@ -1,0 +1,82 @@
+import { Module } from '@nestjs/common';
+import { UserAccountsModule } from '../user-accounts/user-accounts.module';
+import { BlogsController } from './blogs/api/blogs.controller';
+import { BlogsQueryRepository } from './blogs/infrastructure/query/blogs.query-repository';
+import { BlogsCommandRepository } from './blogs/infrastructure/blogs.command-repository';
+import { PostsQueryRepository } from './posts/infrastructure/query/posts.query-repository';
+import { PostsCommandRepository } from './posts/infrastructure/posts.command-repository';
+import { PostsController } from './posts/api/posts.controller';
+import { CommentsController } from './comments/api/comments.controller';
+import { CommentsService } from './comments/application/comments.service';
+import { CommentsQueryRepository } from './comments/infrastructure/query/comments.query-repository';
+import { CommentsCommandRepository } from './comments/infrastructure/comments.command-repository';
+import { GetCommentsForSpecificPostIdHandler } from './comments/application/usecases/get-comments-for-specified-post-id.usecase';
+import { GetAllPostsHandler } from './posts/application/usecases/get-all-posts.usecase';
+import { GetPostByIdHandler } from './posts/application/usecases/get-post-by-id.usecase';
+import { CreateNewCommentHandler } from './comments/application/usecases/create-new-comment.usecase';
+import { UpdateCommentByIdHandler } from './comments/application/usecases/update-comment-by-id.usecase';
+import { DeleteCommentByIdHandler } from './comments/application/usecases/delete-comment-by-id.usecase';
+import { ChangeCommentLikeStatusHandler } from './comments/application/usecases/change-comment-like-status.usecase';
+import { ChangePostLikeStatusHandler } from './posts/application/usecases/change-post-like-status.usecase';
+import { CommentLikesCommandRepository } from './likes/infrastructure/comment-likes.command-repository';
+import { CommentLikesQueryRepository } from './likes/infrastructure/query/comment-likes.query-repository';
+import { PostLikesCommandRepository } from './likes/infrastructure/post-likes.command-repostory';
+import { PostLikesQueryRepository } from './likes/infrastructure/query/post-likes.query-repository';
+import {
+    GetPostsByBlogIdQueryHandler,
+} from './blogs/application/usecases/get-posts-by-blog-id.usecase';
+import { GetBlogByIdQueryHandler } from './blogs/application/usecases/get-blog-by-id.usecase';
+import { CreateBlogCommandHandler } from './blogs/application/usecases/create-blog.usecase';
+import { UpdateBlogHandler } from './blogs/application/usecases/update-blog-by-id.usecase';
+import { CreatePostForBlogHandler } from './blogs/application/usecases/create-post.usecase';
+import { UpdatePostByBlogIdPostIdHandler } from './blogs/application/usecases/update-post-by-blog-id-post-id.usecase';
+import { DeleteBlogByIdCommandHandler } from './blogs/application/usecases/delete-blog-by-id.usecase';
+import {
+    DeletePostByBlogIdPostIdCommandHandler
+} from './blogs/application/usecases/delete-post-by-blog-id-post-id.usecase';
+import { SaBlogsController } from './blogs/api/sa-blogs.controller';
+import { GetCommentByIdHandler } from './comments/application/usecases/get-comment-by-id.usecase';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Blog } from './blogs/domain/type-orm-blog.entity';
+import { Post } from './posts/domain/type-orm-post.entity';
+
+//тут регистрируем провайдеры всех сущностей блоггерской платформы (blogs, posts, comments, etc...)
+@Module({
+    imports: [
+        TypeOrmModule.forFeature([Blog, Post]), // здесь надо зарегистрировать сущности-Entity которые мы создаем в соответствующих структурных разделах
+
+        UserAccountsModule,
+    ],
+    controllers: [BlogsController, PostsController, CommentsController, SaBlogsController],
+    providers: [
+        DeletePostByBlogIdPostIdCommandHandler,
+        DeleteBlogByIdCommandHandler,
+        UpdatePostByBlogIdPostIdHandler,
+        UpdateBlogHandler,
+        CreatePostForBlogHandler,
+        CreateBlogCommandHandler,
+        GetBlogByIdQueryHandler,
+        ChangeCommentLikeStatusHandler,
+        GetPostsByBlogIdQueryHandler,
+        GetCommentByIdHandler,
+        DeleteCommentByIdHandler,
+        UpdateCommentByIdHandler,
+        CreateNewCommentHandler,
+        ChangePostLikeStatusHandler,
+        GetPostByIdHandler,
+        GetAllPostsHandler,
+        GetCommentsForSpecificPostIdHandler,
+        BlogsQueryRepository,
+        BlogsCommandRepository,
+        PostsQueryRepository,
+        PostsCommandRepository,
+        CommentsService,
+        CommentsQueryRepository,
+        CommentsCommandRepository,
+        CommentLikesCommandRepository,
+        CommentLikesQueryRepository,
+        PostLikesCommandRepository,
+        PostLikesQueryRepository,
+    ],
+})
+export class BloggersPlatformModule {}
