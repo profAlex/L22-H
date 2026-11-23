@@ -1,6 +1,7 @@
 import { BaseDBEntity } from '../../../../core/postgres_db_entities/baseDBEntity';
 import { Column, Entity, JoinColumn, OneToMany } from 'typeorm';
 import { Post } from '../../posts/domain/type-orm-post.entity';
+import { SQLBlog } from './sql-blog.entity';
 
 @Entity('blogs')
 export class Blog extends BaseDBEntity {
@@ -18,6 +19,10 @@ export class Blog extends BaseDBEntity {
 
     @OneToMany(() => Post, post => post.blog)
     posts: Post[];
+
+    toDomain(){
+        return SQLBlog.reconstructInstance({})
+    }
 }
 
 // -- auto-generated definition

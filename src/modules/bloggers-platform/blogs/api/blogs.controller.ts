@@ -86,7 +86,6 @@ export class BlogsController {
         description: 'Получить все посты, относящиеся к ID блоггера',
     })
     @ApiParam({ name: 'blogId' }) //для сваггера
-    // TODO: надо сделать плоский класс чтобы swagger подхватил то тчо внутри items[] находится, по аналогии с SwaggerBlogsPaginatedViewDto
     @ApiOkResponse({ type: PaginatedViewDto<SQLPostViewDto> })
     @UseGuards(JwtOptionalAuthGuard)
     @Get(':blogId/posts')
