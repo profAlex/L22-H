@@ -7,7 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { SortDirection } from '../../../../../core/dto/base.query-params.input-dto';
 import { DomainException } from '../../../../../core/exceptions/domain-exceptions';
 import { DomainExceptionCode } from '../../../../../core/exceptions/domain-exception-codes';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { SQLBlogViewDto } from '../../api/view-dto/blogs.view-dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Blog } from '../../domain/type-orm-blog.entity';
@@ -29,7 +29,6 @@ export class BlogsQueryRepository {
         @InjectRepository(Blog)
         private readonly blogRepository: Repository<Blog>,
     ) {}
-
 
     // async SQLgetAllBlogs(
     //     query: GetBlogsQueryParams,
@@ -137,7 +136,6 @@ export class BlogsQueryRepository {
     //     });
     // }
 
-
     async SQLgetAllBlogs(
         query: GetBlogsQueryParams,
     ): Promise<PaginatedViewDto<SQLBlogViewDto>> {
@@ -145,8 +143,10 @@ export class BlogsQueryRepository {
 
         queryBuilder.where('b.deleted_at IS NULL');
 
-        if(query.searchNameTerm){
-            queryBuilder.andWhere('b.name ILIKE :passedNameTerm',  {passedNameTerm: `%${query.searchNameTerm}%`});
+        if (query.searchNameTerm) {
+            queryBuilder.andWhere('b.name ILIKE :passedNameTerm', {
+                passedNameTerm: `%${query.searchNameTerm}%`,
+            });
         }
 
         // делаем подсчет до того как проведен .select, чтобы не сломался счет
@@ -160,9 +160,10 @@ export class BlogsQueryRepository {
             [BlogsSortBy.WebsiteUrl]: 'b.website_url',
             [BlogsSortBy.IsMembership]: 'b.is_membership',
         };
-        const sortByColumn = allowedSortingFields[query.sortBy] || 'b.created_at';
+        const sortByColumn =
+            allowedSortingFields[query.sortBy] || 'b.created_at';
         const sortDirection =
-            query.sortDirection && (query.sortDirection.toUpperCase() === 'ASC')
+            query.sortDirection && query.sortDirection.toUpperCase() === 'ASC'
                 ? 'ASC'
                 : 'DESC';
 
@@ -171,12 +172,14 @@ export class BlogsQueryRepository {
         const skip = query.calculateSkip();
         queryBuilder.skip(skip).take(query.pageSize);
 
-        queryBuilder.select([`b.id AS "id"`,
+        queryBuilder.select([
+            `b.id AS "id"`,
             `b.name AS "name"`,
             `b.description AS "description"`,
             `b.website_url AS "website_url"`,
             `b.created_at AS "created_at"`,
-            `b.is_membership AS "is_membership"`,]);
+            `b.is_membership AS "is_membership"`,
+        ]);
 
         const blogRows = await queryBuilder.getRawMany();
 
@@ -190,20 +193,18 @@ export class BlogsQueryRepository {
         });
     }
 
-
     async SQLgetBlogById(blogId: string): Promise<SQLBlogViewDto | null> {
-
-        console.log()
+        console.log();
         const query = `
-            SELECT 
-                id,
-                name,
-                description,
-                website_url,
-                created_at,
-                is_membership
+            SELECT id,
+                   name,
+                   description,
+                   website_url,
+                   created_at,
+                   is_membership
             FROM public.blogs
-            WHERE id = $1 AND deleted_at IS NULL;
+            WHERE id = $1
+              AND deleted_at IS NULL;
         `;
 
         const [blogRow] = await this.dataSource.query<RawBlogData[]>(query, [
@@ -217,23 +218,28 @@ export class BlogsQueryRepository {
         return SQLBlogViewDto.mapFromDbRaw(blogRow);
     }
 
+    // async SQLifBlogExists(blogId: string): Promise<boolean> {
+    //     const query = `
+    //         SELECT EXISTS (
+    //             SELECT 1
+    //             FROM public.blogs
+    //             WHERE id = $1 AND deleted_at IS NULL
+    //         ) as exists;
+    //     `;
+    //
+    //     const [resultRow] = await this.dataSource.query<{ exists: boolean }[]>(
+    //         query,
+    //         [blogId],
+    //     );
+    //
+    //     // если вдруг по какой-то причине драйвер вернет пустой массив, тогда просто nest выдаст 500
+    //     // Boolean(...): Гарантирует, что метод всегда вернет строго true или false (boolean), даже если СУБД вернет 1/0 или "true"/"false"
+    //     return Boolean(resultRow?.exists);
+    // }
 
     async SQLifBlogExists(blogId: string): Promise<boolean> {
-        const query = ` 
-            SELECT EXISTS (
-                SELECT 1
-                FROM public.blogs
-                WHERE id = $1 AND deleted_at IS NULL
-            ) as exists;
-        `;
-
-        const [resultRow] = await this.dataSource.query<{ exists: boolean }[]>(
-            query,
-            [blogId],
-        );
-
-        // если вдруг по какой-то причине драйвер вернет пустой массив, тогда просто nest выдаст 500
-        // Boolean(...): Гарантирует, что метод всегда вернет строго true или false (boolean), даже если СУБД вернет 1/0 или "true"/"false"
-        return Boolean(resultRow?.exists);
+        return await this.blogRepository.exists({
+            where: { id: blogId, deleted_at: IsNull() },
+        });
     }
 }

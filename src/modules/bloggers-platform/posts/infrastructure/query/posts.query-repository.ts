@@ -10,8 +10,11 @@ import { DomainException } from '../../../../../core/exceptions/domain-exception
 import { DomainExceptionCode } from '../../../../../core/exceptions/domain-exception-codes';
 import { PostLikesQueryRepository } from '../../../likes/infrastructure/query/post-likes.query-repository';
 import { LikeStatus } from '../../../../../core/enums/like-status.enum';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { SQLPostViewDto } from '../../api/view-dto/posts.view-dto';
+import { PostsSortBy } from '../../api/input-dto/posts-sort-by';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Post } from '../../domain/type-orm-post.entity';
 
 export interface PostQueryRawDto {
     id: string;
@@ -38,6 +41,8 @@ export class PostsQueryRepository {
     constructor(
         private readonly postLikesQueryRepository: PostLikesQueryRepository,
         private readonly dataSource: DataSource,
+        @InjectRepository(Post)
+        private readonly postRepository: Repository<Post>,
     ) {}
 
     async SQLifPostExists(id: string): Promise<boolean> {
@@ -57,103 +62,218 @@ export class PostsQueryRepository {
         return resultRow?.exists ?? false;
     }
 
+    // async SQLgetPostsByBlogId({
+    //     userId,
+    //     blogId,
+    //     query,
+    // }: {
+    //     userId?: string | null;
+    //     blogId: string;
+    //     query: GetPostsQueryParams;
+    // }): Promise<PaginatedViewDto<SQLPostViewDto>> {
+    //     const { sortBy, sortDirection, pageNumber, pageSize } = query;
+    //
+    //     const sortingMap: Record<string, string> = {
+    //         title: 'title',
+    //         shortDescription: 'short_description',
+    //         content: 'content',
+    //         blogId: 'blog_id',
+    //         blogName: 'b.name',
+    //         createdAt: 'p.created_at',
+    //     };
+    //
+    //     const sortingClause = sortingMap[sortBy] || 'p.created_at';
+    //     const directionClause =
+    //         sortDirection?.trim().toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    //     const limit = pageSize;
+    //     const offset = query.calculateSkip();
+    //
+    //     /* ITEMS STRUCTURE
+    //     "items":
+    //     [
+    //         {
+    //             "id": "string",
+    //             "title": "string",
+    //             "shortDescription": "string",
+    //             "content": "string",
+    //             "blogId": "string",
+    //             "blogName": "string",
+    //             "createdAt": "2026-09-11T16:25:24.289Z",
+    //             "extendedLikesInfo":
+    //             {
+    //                 "likesCount": 0,
+    //                 "dislikesCount": 0,
+    //                 "myStatus": "None",
+    //                 "newestLikes":
+    //                 [
+    //                     {
+    //                         "addedAt": "2026-09-11T16:25:24.289Z",
+    //                         "userId": "string",
+    //                         "login": "string"
+    //                     }
+    //                 ]
+    //             }
+    //         }
+    //     ]
+    //     * */
+    //
+    //     const postInfoQuery = `
+    //         SELECT p.id,
+    //                p.title,
+    //                p.short_description        as "shortDescription",
+    //                p.content,
+    //                p.blog_id                  as "blogId",
+    //                b.name                     as "blogName",
+    //                p.created_at               as "createdAt",
+    //                p.likes_count              as "likesCount",
+    //                p.dislikes_count           as "dislikesCount",
+    //                COALESCE(l.status, 'None') AS "myStatus"
+    //         FROM public.posts p
+    //                  LEFT JOIN public.blogs b ON p.blog_id = b.id
+    //                  LEFT JOIN public.post_likes l ON l.post_id = p.id AND l.user_id = $1
+    //         WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL
+    //           AND p.blog_id = $2
+    //         ORDER BY ${sortingClause} ${directionClause}
+    //         LIMIT $3 OFFSET $4;
+    //     `;
+    //
+    //     const countQuery = `
+    //         SELECT COUNT(*)::int AS "totalCount"
+    //         FROM public.posts p
+    //         WHERE p.deleted_at IS NULL
+    //           AND p.blog_id = $1;
+    //     `;
+    //
+    //     const [postRows, countResult] = await Promise.all([
+    //         this.dataSource.query<PostQueryRawDto[]>(postInfoQuery, [
+    //             userId ?? null,
+    //             blogId,
+    //             limit,
+    //             offset,
+    //         ]),
+    //         this.dataSource.query<{ totalCount: number }[]>(countQuery, [
+    //             blogId,
+    //         ]),
+    //     ]);
+    //
+    //     const totalCount = countResult[0]?.totalCount ?? 0;
+    //
+    //     // сразу возвращаем пустой результат и не делаем 2-й запрос если постов нет
+    //     if (!postRows.length) {
+    //         return PaginatedViewDto.mapToView<SQLPostViewDto>({
+    //             items: [],
+    //             page: pageNumber,
+    //             size: pageSize,
+    //             totalCount: totalCount,
+    //         });
+    //     }
+    //
+    //     const postIdArray = postRows.map((postRow) => postRow.id);
+    //
+    //     const likesInfoQuery = `
+    //         SELECT sub.post_id  AS "postId",
+    //                sub.user_id  AS "userId",
+    //                sub.added_at AS "addedAt",
+    //                u.login      AS "login"
+    //         FROM (SELECT l.post_id,
+    //                      l.user_id,
+    //                      l.added_at,
+    //                      ROW_NUMBER() OVER (PARTITION BY l.post_id ORDER BY l.added_at DESC ) as rn
+    //               FROM public.post_likes l
+    //               WHERE l.post_id = ANY ($1::uuid[])
+    //                 AND l.status = 'Like') sub
+    //                  JOIN public.users u ON sub.user_id = u.id
+    //         WHERE sub.rn <= 3
+    //         ORDER BY sub.post_id ASC, sub.added_at DESC;
+    //     `;
+    //
+    //     const likeInfoRows = await this.dataSource.query<likeInfoQueryRawDto[]>(
+    //         likesInfoQuery,
+    //         [postIdArray],
+    //     );
+    //
+    //     return PaginatedViewDto.mapToView<SQLPostViewDto>({
+    //         items: postRows.map((post) =>
+    //             SQLPostViewDto.mapToViewFromFlatSQL(post, likeInfoRows),
+    //         ),
+    //         page: pageNumber,
+    //         size: pageSize,
+    //         totalCount: totalCount,
+    //     });
+    // }
+
+
     async SQLgetPostsByBlogId({
-        userId,
-        blogId,
-        query,
-    }: {
+                                  userId,
+                                  blogId,
+                                  query,
+                              }: {
         userId?: string | null;
         blogId: string;
         query: GetPostsQueryParams;
     }): Promise<PaginatedViewDto<SQLPostViewDto>> {
         const { sortBy, sortDirection, pageNumber, pageSize } = query;
 
-        const sortingMap: Record<string, string> = {
-            title: 'title',
-            shortDescription: 'short_description',
-            content: 'content',
-            blogId: 'blog_id',
-            blogName: 'b.name',
-            createdAt: 'p.created_at',
+        // создаем QueryBuilder для постов с алиасом 'p'
+        const queryBuilder = this.postRepository.createQueryBuilder('p');
+
+        // джойним родительский блог и лайки текущего юзера
+        // в TypeORM для джойна совсем необязательно создавать полноценный класс
+        // сущности с декоратором @Entity(). можно сджойнить её как «сырую» таблицу
+        // прямо по имени в базе данных public.post_likes
+        queryBuilder.leftJoin('p.blog', 'b');
+        queryBuilder.leftJoin(
+            'public.post_likes', // имя связи OneToMany в сущности Post
+            'l',
+            'l.user_id = :userId',
+            { userId: userId ?? null }
+        );
+
+        // базовые условия (soft delete + конкретный блог)
+        queryBuilder.where('p.deleted_at IS NULL');
+        queryBuilder.andWhere('b.deleted_at IS NULL');
+        queryBuilder.andWhere('p.blog_id = :blogId', { blogId });
+
+        // считаем общее количество СТРОГО ДО селектов, сортировки и пагинации
+        const totalCount = await queryBuilder.getCount();
+
+        // безопасная сортировка (Whitelist) с учетом алиасов
+        const sortingMap: Record<PostsSortBy, string> = {
+            [PostsSortBy.Title]: 'title',
+            [PostsSortBy.ShortDescription]: 'short_description',
+            [PostsSortBy.Content]: 'content',
+            [PostsSortBy.BlogId]: 'blog_id',
+            [PostsSortBy.BlogName]: 'b.name',
+            [PostsSortBy.CreatedAt]: 'p.created_at',
         };
 
-        const sortingClause = sortingMap[sortBy] || 'p.created_at';
+        const sortByColumn = sortingMap[sortBy] || 'p.created_at';
         const directionClause =
             sortDirection?.trim().toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-        const limit = pageSize;
-        const offset = query.calculateSkip();
 
-        /* ITEMS STRUCTURE
-        "items":
-        [
-            {
-                "id": "string",
-                "title": "string",
-                "shortDescription": "string",
-                "content": "string",
-                "blogId": "string",
-                "blogName": "string",
-                "createdAt": "2026-09-11T16:25:24.289Z",
-                "extendedLikesInfo":
-                {
-                    "likesCount": 0,
-                    "dislikesCount": 0,
-                    "myStatus": "None",
-                    "newestLikes":
-                    [
-                        {
-                            "addedAt": "2026-09-11T16:25:24.289Z",
-                            "userId": "string",
-                            "login": "string"
-                        }
-                    ]
-                }
-            }
-        ]
-        * */
+        queryBuilder.orderBy(sortByColumn, directionClause);
 
-        const postInfoQuery = `
-            SELECT p.id,
-                   p.title,
-                   p.short_description        as "shortDescription",
-                   p.content,
-                   p.blog_id                  as "blogId",
-                   b.name                     as "blogName",
-                   p.created_at               as "createdAt",
-                   p.likes_count              as "likesCount",
-                   p.dislikes_count           as "dislikesCount",
-                   COALESCE(l.status, 'None') AS "myStatus"
-            FROM public.posts p
-                     LEFT JOIN public.blogs b ON p.blog_id = b.id
-                     LEFT JOIN public.post_likes l ON l.post_id = p.id AND l.user_id = $1
-            WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL
-              AND p.blog_id = $2
-            ORDER BY ${sortingClause} ${directionClause}
-            LIMIT $3 OFFSET $4;
-        `;
+        // пагинация
+        const skip = query.calculateSkip();
+        queryBuilder.skip(skip).take(pageSize);
 
-        const countQuery = `
-            SELECT COUNT(*)::int AS "totalCount"
-            FROM public.posts p
-            WHERE p.deleted_at IS NULL
-              AND p.blog_id = $1;
-        `;
-
-        const [postRows, countResult] = await Promise.all([
-            this.dataSource.query<PostQueryRawDto[]>(postInfoQuery, [
-                userId ?? null,
-                blogId,
-                limit,
-                offset,
-            ]),
-            this.dataSource.query<{ totalCount: number }[]>(countQuery, [
-                blogId,
-            ]),
+        // точечный выбор полей для сырого результата (getRawMany)
+        queryBuilder.select([
+            'p.id AS "id"',
+            'p.title AS "title"',
+            'p.short_description AS "shortDescription"',
+            'p.content AS "content"',
+            'p.blog_id AS "blogId"',
+            'b.name AS "blogName"',
+            'p.created_at AS "createdAt"',
+            'p.likes_count AS "likesCount"',
+            'p.dislikes_count AS "dislikesCount"',
+            'COALESCE(l.status, \'None\') AS "myStatus"',
         ]);
 
-        const totalCount = countResult[0]?.totalCount ?? 0;
+        const postRows = await queryBuilder.getRawMany();
 
-        // сразу возвращаем пустой результат и не делаем 2-й запрос если постов нет
+        // Если постов нет — сразу отдаем пустой результат
         if (!postRows.length) {
             return PaginatedViewDto.mapToView<SQLPostViewDto>({
                 items: [],
@@ -163,7 +283,9 @@ export class PostsQueryRepository {
             });
         }
 
-        const postIdArray = postRows.map((postRow) => postRow.id);
+        // добираем топ-3 лайка для каждого поста (оставляем через чистый SQL,
+        // так как оконные функции ROW_NUMBER() проще и эффективнее выполнять через dataSource.query)
+        const postIdArray = postRows.map((postRow: any) => postRow.id);
 
         const likesInfoQuery = `
             SELECT sub.post_id  AS "postId",
@@ -188,7 +310,7 @@ export class PostsQueryRepository {
         );
 
         return PaginatedViewDto.mapToView<SQLPostViewDto>({
-            items: postRows.map((post) =>
+            items: postRows.map((post:any) =>
                 SQLPostViewDto.mapToViewFromFlatSQL(post, likeInfoRows),
             ),
             page: pageNumber,
