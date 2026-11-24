@@ -52,8 +52,8 @@ export class AuthController {
 
     // Try login user to the system
     @HttpCode(HttpStatus.OK)
-    @UseGuards(ThrottlerGuard, LocalAuthGuard)
-    // @UseGuards(LocalAuthGuard)
+    // @UseGuards(ThrottlerGuard, LocalAuthGuard)
+    @UseGuards(LocalAuthGuard)
     @Post('login')
     async login(
         // @Body() body: UserLoginInputDto,
@@ -120,7 +120,7 @@ export class AuthController {
 
     // Password recovery via Email confirmation. Email should be sent with RecoveryCode inside
     @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(ThrottlerGuard)
+    // @UseGuards(ThrottlerGuard)
     @Post('password-recovery')
     async passwordRecovery(
         @Body() body: PasswordRecoveryInputDto,
@@ -130,7 +130,7 @@ export class AuthController {
 
     // Confirm Password recovery
     @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(ThrottlerGuard)
+    // @UseGuards(ThrottlerGuard)
     @Post('new-password')
     async newPassword(@Body() body: NewPasswordInputDto): Promise<void> {
         return this.commandBus.execute(
@@ -140,7 +140,7 @@ export class AuthController {
 
     // Confirm registration
     @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(ThrottlerGuard)
+    // @UseGuards(ThrottlerGuard)
     @Post('registration-confirmation')
     async registrationConfirmation(
         @Body() body: RegistrationConfirmationInputDto,
@@ -152,7 +152,7 @@ export class AuthController {
 
     // Registration in the system. Email with confirmation code will be send to passed email address
     @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(ThrottlerGuard)
+    // @UseGuards(ThrottlerGuard)
     @Post('registration')
     async registration(@Body() body: RegisterNewUserDto) {
         return this.commandBus.execute(
@@ -162,7 +162,7 @@ export class AuthController {
 
     // Resend confirmation registration Email if user exists
     @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(ThrottlerGuard)
+    // @UseGuards(ThrottlerGuard)
     @Post('registration-email-resending')
     async registrationEmailResending(
         @Body() body: RegistrationEmailResendingInputDto,

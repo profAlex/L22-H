@@ -15,7 +15,7 @@ export class SQLBlog {
     static createInstance(dto: CreateBlogDomainDto): SQLBlog {
         const newBlog = new SQLBlog();
         // ID не задаем, его сгенерирует PostgreSQL (gen_random_uuid())
-        // либо можно сгенерировать криптографический UUID прямо в коде: crypto.randomUUID()
+        // либо можно сгенерировать криптографический UUID прямо в коде: crypto.randomUUID() через наш модуль-метод
         newBlog.name = dto.name;
         newBlog.description = dto.description;
         newBlog.websiteUrl = dto.websiteUrl;

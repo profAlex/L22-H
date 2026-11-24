@@ -1,11 +1,15 @@
 import {Injectable} from "@nestjs/common";
 import { SQLBlog } from '../domain/sql-blog.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { Blog } from '../domain/type-orm-blog.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class BlogsCommandRepository {
     constructor(
                 private readonly dataSource: DataSource,
+                @InjectRepository(Blog)
+                private readonly blogRepository: Repository<Blog>,
     ){}
 
     // async SQLsave(blog: SQLBlog): Promise<void> {
@@ -45,33 +49,46 @@ export class BlogsCommandRepository {
     //     await this.dataSource.query(query, queryParams);
     // }
 
+    // async SQLsaveCreate(blog: SQLBlog): Promise<string> {
+    //     // console.log('DEBUG BLOG DATES:', {
+    //     //     createdAt: blog.createdAt,
+    //     //     createdAtType: typeof blog.createdAt,
+    //     //     updatedAt: blog.updatedAt,
+    //     //     updatedAtType: typeof blog.updatedAt,
+    //     //     deletedAt: blog.deletedAt,
+    //     // });
+    //
+    //     const query = `
+    //         INSERT INTO blogs (name, description, website_url, is_membership, created_at, updated_at, deleted_at)
+    //         VALUES ($1, $2, $3, $4, $5, $6, $7)
+    //         RETURNING id;
+    //     `;
+    //     const queryParams = [
+    //         blog.name,
+    //         blog.description,
+    //         blog.websiteUrl,
+    //         blog.isMembership ?? false,
+    //         blog.createdAt ? new Date(blog.createdAt) : new Date(),
+    //         blog.updatedAt ? new Date(blog.updatedAt) : new Date(),
+    //         blog.deletedAt ? new Date(blog.deletedAt) : null, // Защита от undefined
+    //     ];
+    //
+    //     const result = await this.dataSource.query(query, queryParams);
+    //     return result[0].id;
+    // }
+
+
     async SQLsaveCreate(blog: SQLBlog): Promise<string> {
-        // console.log('DEBUG BLOG DATES:', {
-        //     createdAt: blog.createdAt,
-        //     createdAtType: typeof blog.createdAt,
-        //     updatedAt: blog.updatedAt,
-        //     updatedAtType: typeof blog.updatedAt,
-        //     deletedAt: blog.deletedAt,
-        // });
+        // сначала конвертируем доменную модель в TypeORM сущность
+        const blogEntity = Blog.fromDomainToEntity(blog);
 
-        const query = `
-            INSERT INTO blogs (name, description, website_url, is_membership, created_at, updated_at, deleted_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id;
-        `;
-        const queryParams = [
-            blog.name,
-            blog.description,
-            blog.websiteUrl,
-            blog.isMembership ?? false,
-            blog.createdAt ? new Date(blog.createdAt) : new Date(),
-            blog.updatedAt ? new Date(blog.updatedAt) : new Date(),
-            blog.deletedAt ? new Date(blog.deletedAt) : null, // Защита от undefined
-        ];
+        // сохраняем через стандартный .save()
+        const savedEntity = await this.blogRepository.save(blogEntity);
 
-        const result = await this.dataSource.query(query, queryParams);
-        return result[0].id;
+        // возвращаем сгенерированный базой ID (или тот который мы передали внутри доменной сущности)
+        return savedEntity.id;
     }
+
 
 
     async SQLsaveUpdate(blog: SQLBlog): Promise<void> {

@@ -6,7 +6,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    Param,
+    Param, ParseUUIDPipe,
     Post,
     Put,
     Query,
@@ -65,7 +65,7 @@ export class PostsController {
     @Get(':id')
     @HttpCode(HttpStatus.OK)
     async getPostById(
-        @Param('id') postId: string,
+        @Param('id', new ParseUUIDPipe()) postId: string,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<SQLPostViewDto> {
         return this.queryBus.execute<SQLPostViewDto>(
@@ -86,7 +86,7 @@ export class PostsController {
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ) {
 
-        console.warn('...Entered \'changeCommentLikeStatus\' method, route: \'PUT /comments/:commentId/like-status\'\n');
+        // console.warn('...Entered \'changeCommentLikeStatus\' method, route: \'PUT /comments/:commentId/like-status\'\n');
 
         return this.commandBus.execute<ChangePostLikeStatus>(
             new ChangePostLikeStatus({

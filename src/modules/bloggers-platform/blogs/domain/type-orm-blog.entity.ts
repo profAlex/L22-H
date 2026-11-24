@@ -20,8 +20,38 @@ export class Blog extends BaseDBEntity {
     @OneToMany(() => Post, post => post.blog)
     posts: Post[];
 
-    toDomain(){
-        return SQLBlog.reconstructInstance({})
+    static fromDomainToEntity(domainBlog: SQLBlog): Blog {
+        const entity = new Blog();
+
+        // Если у доменной модели уже есть сгенерированный ID (например, при обновлении)
+        if (domainBlog.id) {
+            entity.id = domainBlog.id;
+        }
+
+        entity.name = domainBlog.name;
+        entity.description = domainBlog.description;
+        entity.website_url = domainBlog.websiteUrl;
+        entity.is_membership = domainBlog.isMembership ?? false;
+
+        // Даты (если они уже заданы в домене)
+        if (domainBlog.createdAt) entity.created_at = new Date(domainBlog.createdAt);
+        if (domainBlog.updatedAt) entity.updated_at = new Date(domainBlog.updatedAt);
+        if (domainBlog.deletedAt) entity.deleted_at = new Date(domainBlog.deletedAt);
+
+        return entity;
+    }
+
+    toDomain(): SQLBlog {
+        return SQLBlog.reconstructInstance({
+            id: this.id,
+            name: this.name,
+            description: this.description,
+            websiteUrl: this.website_url,
+            isMembership: this.is_membership,
+            createdAt: this.created_at,
+            updatedAt: this.updated_at,
+            deletedAt: this.deleted_at,
+        });
     }
 }
 

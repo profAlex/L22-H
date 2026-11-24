@@ -75,8 +75,6 @@ export class SaBlogsController {
             new CreateBlogCommand(body),
         );
 
-        // console.log("blogId received:", blogId);
-
         return this.queryBus.execute<SQLBlogViewDto>(
             new GetBlogByIdQuery(blogId),
         );

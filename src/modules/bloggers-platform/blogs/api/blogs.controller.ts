@@ -12,7 +12,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    Param,
+    Param, ParseUUIDPipe,
     Post,
     Put,
     Query,
@@ -91,7 +91,7 @@ export class BlogsController {
     @Get(':blogId/posts')
     @HttpCode(HttpStatus.OK)
     async getPostsByBlogId(
-        @Param('blogId') blogId: string,
+        @Param('blogId', new ParseUUIDPipe()) blogId: string,
         @Query() query: GetPostsQueryParams,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<PaginatedViewDto<SQLPostViewDto>> {
@@ -104,7 +104,7 @@ export class BlogsController {
     // Returns blog by id
     @Get(':id')
     @HttpCode(HttpStatus.OK)
-    async getBlogById(@Param('id') id: string): Promise<SQLBlogViewDto> {
+    async getBlogById(@Param('id', new ParseUUIDPipe()) id: string): Promise<SQLBlogViewDto> {
         return this.queryBus.execute<SQLBlogViewDto>(new GetBlogByIdQuery(id));
     }
 
