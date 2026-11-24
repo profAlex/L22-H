@@ -58,6 +58,22 @@ export class PostsController {
     }
 
 
+    // Return post by id
+    @ApiOperation({ summary: 'Return post by id' })
+    @ApiParam({ name: 'id' })
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get(':id')
+    @HttpCode(HttpStatus.OK)
+    async getPostById(
+        @Param('id') postId: string,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<SQLPostViewDto> {
+        return this.queryBus.execute<SQLPostViewDto>(
+            new GetPostById(postId, user?.userId),
+        );
+    }
+
+
     // Make like/unlike/dislike/undislike operation
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a post' })
     @ApiParam({ name: 'postId' })
@@ -115,21 +131,6 @@ export class PostsController {
         );
     }
 
-
-    // Return post by id
-    @ApiOperation({ summary: 'Return post by id' })
-    @ApiParam({ name: 'id' })
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get(':id')
-    @HttpCode(HttpStatus.OK)
-    async getPostById(
-        @Param('id') postId: string,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<SQLPostViewDto> {
-        return this.queryBus.execute<SQLPostViewDto>(
-            new GetPostById(postId, user?.userId),
-        );
-    }
 
 
 
