@@ -193,23 +193,46 @@ export class BlogsQueryRepository {
         });
     }
 
-    async SQLgetBlogById(blogId: string): Promise<SQLBlogViewDto | null> {
-        console.log();
-        const query = `
-            SELECT id,
-                   name,
-                   description,
-                   website_url,
-                   created_at,
-                   is_membership
-            FROM public.blogs
-            WHERE id = $1
-              AND deleted_at IS NULL;
-        `;
+    // async SQLgetBlogById(blogId: string): Promise<SQLBlogViewDto | null> {
+    //     const query = `
+    //         SELECT id,
+    //                name,
+    //                description,
+    //                website_url,
+    //                created_at,
+    //                is_membership
+    //         FROM public.blogs
+    //         WHERE id = $1
+    //           AND deleted_at IS NULL;
+    //     `;
+    //
+    //     const [blogRow] = await this.dataSource.query<RawBlogData[]>(query, [
+    //         blogId,
+    //     ]);
+    //
+    //     if (!blogRow) {
+    //         return null;
+    //     }
+    //
+    //     return SQLBlogViewDto.mapFromDbRaw(blogRow);
+    // }
 
-        const [blogRow] = await this.dataSource.query<RawBlogData[]>(query, [
-            blogId,
-        ]);
+
+    async SQLgetBlogById(blogId: string): Promise<SQLBlogViewDto | null> {
+        const queryBuilder = this.blogRepository.createQueryBuilder('b');
+
+        const blogRow = await queryBuilder
+            .where('b.deleted_at IS NULL')
+            .andWhere('b.id = :passedBlogId', {passedBlogId: blogId})
+            .select([
+                `b.id AS "id"`,
+                `b.name AS "name"`,
+                `b.description AS "description"`,
+                `b.website_url AS "website_url"`,
+                `b.created_at AS "created_at"`,
+                `b.is_membership AS "is_membership"`,
+            ])
+            .getRawOne();
 
         if (!blogRow) {
             return null;
@@ -217,6 +240,7 @@ export class BlogsQueryRepository {
 
         return SQLBlogViewDto.mapFromDbRaw(blogRow);
     }
+
 
     // async SQLifBlogExists(blogId: string): Promise<boolean> {
     //     const query = `

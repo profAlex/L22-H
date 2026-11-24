@@ -113,11 +113,6 @@ export class BlogsController {
     //**************************************************************************
 
 
-
-
-
-
-
     //
     // // Create new blog
     // @UseGuards(BasicAuthGuard)
