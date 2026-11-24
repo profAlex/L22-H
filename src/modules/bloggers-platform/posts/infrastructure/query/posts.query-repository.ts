@@ -225,8 +225,8 @@ export class PostsQueryRepository {
         queryBuilder.leftJoin(
             'public.post_likes', // имя связи OneToMany в сущности Post
             'l',
-            'l.user_id = :userId',
-            { userId: userId ?? null }
+            'l.post_id = p.id AND l.user_id = :sentUserId',
+            { sentUserId: userId ?? null }
         );
 
         // базовые условия (soft delete + конкретный блог)
@@ -239,10 +239,10 @@ export class PostsQueryRepository {
 
         // безопасная сортировка (Whitelist) с учетом алиасов
         const sortingMap: Record<PostsSortBy, string> = {
-            [PostsSortBy.Title]: 'title',
-            [PostsSortBy.ShortDescription]: 'short_description',
-            [PostsSortBy.Content]: 'content',
-            [PostsSortBy.BlogId]: 'blog_id',
+            [PostsSortBy.Title]: 'p.title',
+            [PostsSortBy.ShortDescription]: 'p.short_description',
+            [PostsSortBy.Content]: 'p.content',
+            [PostsSortBy.BlogId]: 'p.blog_id',
             [PostsSortBy.BlogName]: 'b.name',
             [PostsSortBy.CreatedAt]: 'p.created_at',
         };
@@ -333,68 +333,176 @@ export class PostsQueryRepository {
     // postId соответствует likeStatus
     // 4) методами mapToView последовательно маппим результат
 
+    // async SQLgetAllPosts({
+    //     sentUserId,
+    //     query,
+    // }: {
+    //     sentUserId?: string | undefined;
+    //     query: GetPostsQueryParams;
+    // }): Promise<PaginatedViewDto<SQLPostViewDto>> {
+    //     const { sortBy, sortDirection, pageNumber, pageSize } = query;
+    //
+    //     const sortingMap: Record<string, string> = {
+    //         title: 'title',
+    //         shortDescription: 'short_description',
+    //         content: 'content',
+    //         blogId: 'blog_id',
+    //         blogName: 'b.name',
+    //         createdAt: 'p.created_at',
+    //     };
+    //
+    //     const sortingClause = sortingMap[sortBy] || 'p.created_at';
+    //     const directionClause =
+    //         sortDirection?.trim().toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    //     const limit = pageSize;
+    //     const offset = query.calculateSkip();
+    //
+    //     const postInfoQuery = `
+    //         SELECT p.id,
+    //                p.title,
+    //                p.short_description        as "shortDescription",
+    //                p.content,
+    //                p.blog_id                  as "blogId",
+    //                b.name                     as "blogName",
+    //                p.created_at               as "createdAt",
+    //                p.likes_count              as "likesCount",
+    //                p.dislikes_count           as "dislikesCount",
+    //                COALESCE(l.status, 'None') AS "myStatus"
+    //         FROM public.posts p
+    //                  LEFT JOIN public.blogs b ON p.blog_id = b.id
+    //                  LEFT JOIN public.post_likes l ON l.post_id = p.id AND l.user_id = $1
+    //         WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL
+    //         ORDER BY ${sortingClause} ${directionClause}
+    //         LIMIT $2 OFFSET $3;
+    //     `;
+    //
+    //     const countQuery = `
+    //         SELECT COUNT(*)::int AS "totalCount"
+    //         FROM public.posts p
+    //                  LEFT JOIN public.blogs b ON p.blog_id = b.id
+    //         WHERE p.deleted_at IS NULL
+    //           AND b.deleted_at IS NULL;
+    //     `;
+    //
+    //     const [postRows, countResult] = await Promise.all([
+    //         this.dataSource.query<PostQueryRawDto[]>(postInfoQuery, [
+    //             sentUserId ?? null,
+    //             limit,
+    //             offset,
+    //         ]),
+    //         this.dataSource.query<{ totalCount: number }[]>(countQuery),
+    //     ]);
+    //
+    //     const totalCount = countResult[0]?.totalCount ?? 0;
+    //
+    //     // сразу возвращаем пустой результат и не делаем 2-й запрос если постов нет
+    //     if (!postRows.length) {
+    //         return PaginatedViewDto.mapToView<SQLPostViewDto>({
+    //             items: [],
+    //             page: pageNumber,
+    //             size: pageSize,
+    //             totalCount: totalCount,
+    //         });
+    //     }
+    //
+    //     const postIdArray = postRows.map((postRow) => postRow.id);
+    //
+    //     const likesInfoQuery = `
+    //         SELECT sub.post_id  AS "postId",
+    //                sub.user_id  AS "userId",
+    //                sub.added_at AS "addedAt",
+    //                u.login      AS "login"
+    //         FROM (SELECT l.post_id,
+    //                      l.user_id,
+    //                      l.added_at,
+    //                      ROW_NUMBER() OVER (PARTITION BY l.post_id ORDER BY l.added_at DESC ) as rn
+    //               FROM public.post_likes l
+    //               WHERE l.post_id = ANY ($1::uuid[])
+    //                 AND l.status = 'Like') sub
+    //                  JOIN public.users u ON sub.user_id = u.id
+    //         WHERE sub.rn <= 3
+    //         ORDER BY sub.post_id ASC, sub.added_at DESC;
+    //     `;
+    //
+    //     const likeInfoRows = await this.dataSource.query<likeInfoQueryRawDto[]>(
+    //         likesInfoQuery,
+    //         [postIdArray],
+    //     );
+    //
+    //     return PaginatedViewDto.mapToView<SQLPostViewDto>({
+    //         items: postRows.map((post) =>
+    //             SQLPostViewDto.mapToViewFromFlatSQL(post, likeInfoRows),
+    //         ),
+    //         page: pageNumber,
+    //         size: pageSize,
+    //         totalCount: totalCount,
+    //     });
+    // }
+
 
     async SQLgetAllPosts({
-        sentUserId,
-        query,
-    }: {
+                             sentUserId,
+                             query,
+                         }: {
         sentUserId?: string | undefined;
         query: GetPostsQueryParams;
     }): Promise<PaginatedViewDto<SQLPostViewDto>> {
         const { sortBy, sortDirection, pageNumber, pageSize } = query;
 
-        const sortingMap: Record<string, string> = {
-            title: 'title',
-            shortDescription: 'short_description',
-            content: 'content',
-            blogId: 'blog_id',
-            blogName: 'b.name',
-            createdAt: 'p.created_at',
+        const queryBuilder = this.postRepository.createQueryBuilder('p');
+        // джойним родительский блог и лайки текущего юзера
+        // в TypeORM для джойна совсем необязательно создавать полноценный класс
+        // сущности с декоратором @Entity(). можно сджойнить её как «сырую» таблицу
+        // прямо по имени в базе данных public.post_likes
+        queryBuilder.leftJoin('p.blog', 'b');
+        queryBuilder.leftJoin(
+            'public.post_likes', // имя связи OneToMany в сущности Post
+            'l',
+            'l.post_id = p.id AND l.user_id = :sentUserId',
+            { sentUserId: sentUserId ?? null }
+        );
+
+        // базовые условия (soft delete + конкретный блог)
+        queryBuilder.where('p.deleted_at IS NULL');
+        queryBuilder.andWhere('b.deleted_at IS NULL');
+
+        const totalCount = await queryBuilder.getCount();
+
+        // безопасная сортировка (Whitelist) с учетом алиасов
+        const sortingMap: Record<PostsSortBy, string> = {
+            [PostsSortBy.Title]: 'p.title',
+            [PostsSortBy.ShortDescription]: 'p.short_description',
+            [PostsSortBy.Content]: 'p.content',
+            [PostsSortBy.BlogId]: 'p.blog_id',
+            [PostsSortBy.BlogName]: 'b.name',
+            [PostsSortBy.CreatedAt]: 'p.created_at',
         };
 
-        const sortingClause = sortingMap[sortBy] || 'p.created_at';
+        const sortByColumn = sortingMap[sortBy] || 'p.created_at';
         const directionClause =
             sortDirection?.trim().toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-        const limit = pageSize;
-        const offset = query.calculateSkip();
 
-        const postInfoQuery = `
-            SELECT p.id,
-                   p.title,
-                   p.short_description        as "shortDescription",
-                   p.content,
-                   p.blog_id                  as "blogId",
-                   b.name                     as "blogName",
-                   p.created_at               as "createdAt",
-                   p.likes_count              as "likesCount",
-                   p.dislikes_count           as "dislikesCount",
-                   COALESCE(l.status, 'None') AS "myStatus"
-            FROM public.posts p
-                     LEFT JOIN public.blogs b ON p.blog_id = b.id
-                     LEFT JOIN public.post_likes l ON l.post_id = p.id AND l.user_id = $1
-            WHERE p.deleted_at IS NULL AND b.deleted_at IS NULL
-            ORDER BY ${sortingClause} ${directionClause}
-            LIMIT $2 OFFSET $3;
-        `;
+        queryBuilder.orderBy(sortByColumn, directionClause);
 
-        const countQuery = `
-            SELECT COUNT(*)::int AS "totalCount"
-            FROM public.posts p
-                     LEFT JOIN public.blogs b ON p.blog_id = b.id
-            WHERE p.deleted_at IS NULL
-              AND b.deleted_at IS NULL;
-        `;
+        // пагинация
+        const skip = query.calculateSkip();
+        queryBuilder.skip(skip).take(pageSize);
 
-        const [postRows, countResult] = await Promise.all([
-            this.dataSource.query<PostQueryRawDto[]>(postInfoQuery, [
-                sentUserId ?? null,
-                limit,
-                offset,
-            ]),
-            this.dataSource.query<{ totalCount: number }[]>(countQuery),
+        // точечный выбор полей для сырого результата (getRawMany)
+        queryBuilder.select([
+            'p.id AS "id"',
+            'p.title AS "title"',
+            'p.short_description AS "shortDescription"',
+            'p.content AS "content"',
+            'p.blog_id AS "blogId"',
+            'b.name AS "blogName"',
+            'p.created_at AS "createdAt"',
+            'p.likes_count AS "likesCount"',
+            'p.dislikes_count AS "dislikesCount"',
+            'COALESCE(l.status, \'None\') AS "myStatus"',
         ]);
 
-        const totalCount = countResult[0]?.totalCount ?? 0;
+        const postRows = await queryBuilder.getRawMany();
 
         // сразу возвращаем пустой результат и не делаем 2-й запрос если постов нет
         if (!postRows.length) {
@@ -439,6 +547,7 @@ export class PostsQueryRepository {
             totalCount: totalCount,
         });
     }
+
 
     async SQLgetPostById({
         postId,

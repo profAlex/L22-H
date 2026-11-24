@@ -42,6 +42,22 @@ export class PostsController {
         console.log('PostsController created');
     }
 
+
+    // Returns all posts
+    @ApiOperation({ summary: 'Returns all posts' })
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get()
+    @HttpCode(HttpStatus.OK)
+    async getAllPosts(
+        @Query() query: GetPostsQueryParams,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<PaginatedViewDto<SQLPostViewDto>> {
+        return this.queryBus.execute<PaginatedViewDto<SQLPostViewDto>>(
+            new GetAllPosts(query, user?.userId),
+        );
+    }
+
+
     // Make like/unlike/dislike/undislike operation
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a post' })
     @ApiParam({ name: 'postId' })
@@ -100,21 +116,6 @@ export class PostsController {
     }
 
 
-    // Returns all posts
-    @ApiOperation({ summary: 'Returns all posts' })
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get()
-    @HttpCode(HttpStatus.OK)
-    async getAllPosts(
-        @Query() query: GetPostsQueryParams,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<PaginatedViewDto<SQLPostViewDto>> {
-        return this.queryBus.execute<PaginatedViewDto<SQLPostViewDto>>(
-            new GetAllPosts(query, user?.userId),
-        );
-    }
-
-
     // Return post by id
     @ApiOperation({ summary: 'Return post by id' })
     @ApiParam({ name: 'id' })
@@ -129,16 +130,6 @@ export class PostsController {
             new GetPostById(postId, user?.userId),
         );
     }
-
-
-
-    //**************************************************************************
-    //**************************************************************************
-
-
-
-
-
 
 
 
