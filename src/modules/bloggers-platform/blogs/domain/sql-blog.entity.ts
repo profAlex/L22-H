@@ -32,12 +32,17 @@ export class SQLBlog {
         blog.id = raw.id;
         blog.name = raw.name;
         blog.description = raw.description;
-        blog.websiteUrl = raw.website_url;
-        blog.isMembership = raw.is_membership;
-        blog.createdAt = raw.created_at ? new Date(raw.created_at) : new Date();
-        blog.updatedAt = raw.updated_at ? new Date(raw.updated_at) : new Date();
+        blog.websiteUrl = raw.websiteUrl ?? raw.website_url;
+        blog.isMembership = raw.isMembership ?? raw.is_membership;
 
-        blog.deletedAt = raw.deleted_at ? new Date(raw.deleted_at) : null;
+        // Безопасно вытаскиваем даты из любого формата (camelCase или snake_case)
+        const rawCreatedAt = raw.createdAt ?? raw.created_at;
+        const rawUpdatedAt = raw.updatedAt ?? raw.updated_at;
+        const rawDeletedAt = raw.deletedAt ?? raw.deleted_at;
+
+        blog.createdAt = rawCreatedAt ? new Date(rawCreatedAt) : new Date();
+        blog.updatedAt = rawUpdatedAt ? new Date(rawUpdatedAt) : new Date();
+        blog.deletedAt = rawDeletedAt ? new Date(rawDeletedAt) : null;
 
         return blog;
     }

@@ -11,7 +11,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    Param,
+    Param, ParseUUIDPipe,
     Post,
     Put,
     Query,
@@ -86,7 +86,7 @@ export class SaBlogsController {
     @Put(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     async updateBlogById(
-        @Param('id') id: string,
+        @Param('id', new ParseUUIDPipe()) id: string,
         @Body() body: UpdateBlogInputDto,
     ): Promise<void> {
         return this.commandBus.execute<void>(
@@ -99,8 +99,7 @@ export class SaBlogsController {
     @UseGuards(BasicAuthGuard)
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async deleteBlogById(@Param('id') id: string): Promise<void> {
-        // return this.blogsService.deleteBlogById(id);
+    async deleteBlogById(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
         return this.commandBus.execute<void>(
             new DeleteBlogByIdCommand(id)
         );
@@ -112,7 +111,7 @@ export class SaBlogsController {
     @Post(':blogId/posts')
     @HttpCode(HttpStatus.CREATED)
     async createPostByBlogId(
-        @Param('blogId') blogId: string,
+        @Param('blogId', new ParseUUIDPipe()) blogId: string,
         @Body() body: CreateBlogPostInputDto,
     ): Promise<SQLPostViewDto> {
         // создаем пост получаем его ID
@@ -132,7 +131,7 @@ export class SaBlogsController {
     @Get(':blogId/posts')
     @HttpCode(HttpStatus.OK)
     async getPostsByBlogId(
-        @Param('blogId') blogId: string,
+        @Param('blogId', new ParseUUIDPipe()) blogId: string,
         @Query() query: GetPostsQueryParams,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<PaginatedViewDto<SQLPostViewDto>> {
@@ -147,8 +146,8 @@ export class SaBlogsController {
     @Put(':blogId/posts/:postId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async updatePostByBlogIdAndPostId(
-        @Param('blogId') blogId: string,
-        @Param('postId') postId: string,
+        @Param('blogId', new ParseUUIDPipe()) blogId: string,
+        @Param('postId', new ParseUUIDPipe()) postId: string,
         @Body() body: SQLUpdatePostInputDto,
     ): Promise<void> {
         return this.commandBus.execute<void>(
@@ -162,8 +161,8 @@ export class SaBlogsController {
     @Delete(':blogId/posts/:postId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deletePostByBlogIdAndPostId(
-        @Param('blogId') blogId: string,
-        @Param('postId') postId: string,
+        @Param('blogId', new ParseUUIDPipe()) blogId: string,
+        @Param('postId', new ParseUUIDPipe()) postId: string,
     ): Promise<void> {
         return this.commandBus.execute<void>(
             new DeletePostByBlogIdPostIdCommand(blogId, postId),

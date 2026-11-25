@@ -91,57 +91,80 @@ export class BlogsCommandRepository {
 
 
 
-    async SQLsaveUpdate(blog: SQLBlog): Promise<void> {
-        const query = `
-        UPDATE blogs
-        SET name = $2,
-            description = $3,
-            website_url = $4,
-            is_membership = $5,
-            updated_at = $6,
-            deleted_at = $7
-        WHERE id = $1;
-    `;
-        const queryParams = [
-            blog.id,
-            blog.name,
-            blog.description,
-            blog.websiteUrl,
-            blog.isMembership,
-            blog.updatedAt,
-            blog.deletedAt,
-        ];
+    // async SQLsaveUpdate(blog: SQLBlog): Promise<void> {
+    //     const query = `
+    //     UPDATE blogs
+    //     SET name = $2,
+    //         description = $3,
+    //         website_url = $4,
+    //         is_membership = $5,
+    //         updated_at = $6,
+    //         deleted_at = $7
+    //     WHERE id = $1;
+    // `;
+    //     const queryParams = [
+    //         blog.id,
+    //         blog.name,
+    //         blog.description,
+    //         blog.websiteUrl,
+    //         blog.isMembership,
+    //         blog.updatedAt,
+    //         blog.deletedAt,
+    //     ];
+    //
+    //     await this.dataSource.query(query, queryParams);
+    // }
 
-        await this.dataSource.query(query, queryParams);
+
+    async SQLsaveUpdate(blog: SQLBlog): Promise<void> {
+        // сначала конвертируем доменную модель в TypeORM сущность
+        const blogEntity = Blog.fromDomainToEntity(blog);
+
+        // сохраняем через стандартный .save()
+        await this.blogRepository.save(blogEntity);
     }
+
 
     // async delete(blogId: string): Promise<boolean> {
     //     const result = await this.BlogModel.deleteOne({ _id: blogId });
     //     return result.deletedCount === 1;
     // }
 
+    // async SQLfindBlogById(id: string): Promise<SQLBlog | null> {
+    //     const query = `
+    //     SELECT
+    //         id,
+    //         name,
+    //         description,
+    //         website_url,
+    //         is_membership,
+    //         created_at,
+    //         updated_at,
+    //         deleted_at
+    //     FROM public.blogs
+    //     WHERE id = $1 AND deleted_at IS NULL;
+    // `;
+    //
+    //     const [raw] = await this.dataSource.query(query, [id]);
+    //
+    //     if (!raw) {
+    //         return null;
+    //     }
+    //
+    //     // восстанавливаем полноценный класс SQLBlog с методами
+    //     return SQLBlog.reconstructInstance(raw);
+    // }
+
+
     async SQLfindBlogById(id: string): Promise<SQLBlog | null> {
-        const query = `
-        SELECT 
-            id,
-            name,
-            description,
-            website_url,
-            is_membership,
-            created_at,
-            updated_at,
-            deleted_at
-        FROM public.blogs
-        WHERE id = $1 AND deleted_at IS NULL;
-    `;
 
-        const [raw] = await this.dataSource.query(query, [id]);
+        const userRow = await this.blogRepository.findOneBy({id: id});
 
-        if (!raw) {
+        if (!userRow) {
             return null;
         }
 
         // восстанавливаем полноценный класс SQLBlog с методами
-        return SQLBlog.reconstructInstance(raw);
+        return userRow.toDomain();
     }
 }

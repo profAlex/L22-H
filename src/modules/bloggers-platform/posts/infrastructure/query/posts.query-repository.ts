@@ -223,7 +223,7 @@ export class PostsQueryRepository {
         // прямо по имени в базе данных public.post_likes
         queryBuilder.innerJoin('p.blog', 'b');
         queryBuilder.leftJoin(
-            'public.post_likes', // имя связи OneToMany в сущности Post
+            'post_likes', //
             'l',
             'l.post_id = p.id AND l.user_id = :sentUserId',
             { sentUserId: userId ?? null }
@@ -255,7 +255,12 @@ export class PostsQueryRepository {
 
         // пагинация
         const skip = query.calculateSkip();
-        queryBuilder.skip(skip).take(pageSize);
+        // queryBuilder.skip(skip).take(pageSize);
+        // методы TypeORM, которые пытаются эмулировать пагинацию
+        // с учетом связей (Relations), из-за чего при LEFT JOIN они часто
+        // генерируют сложный SQL с подзапросами, который может сбоить.
+        queryBuilder.offset(skip);
+        queryBuilder.limit(pageSize);
 
         // точечный выбор полей для сырого результата (getRawMany)
         queryBuilder.select([
@@ -456,7 +461,7 @@ export class PostsQueryRepository {
         // прямо по имени в базе данных public.post_likes
         queryBuilder.innerJoin('p.blog', 'b');
         queryBuilder.leftJoin(
-            'public.post_likes', // имя связи OneToMany в сущности Post
+            'post_likes',
             'l',
             'l.post_id = p.id AND l.user_id = :sentUserId',
             { sentUserId: sentUserId ?? null }
@@ -486,7 +491,9 @@ export class PostsQueryRepository {
 
         // пагинация
         const skip = query.calculateSkip();
-        queryBuilder.skip(skip).take(pageSize);
+        // queryBuilder.skip(skip).take(pageSize);
+        queryBuilder.offset(skip);
+        queryBuilder.limit(pageSize);
 
         // точечный выбор полей для сырого результата (getRawMany)
         queryBuilder.select([
@@ -658,7 +665,7 @@ export class PostsQueryRepository {
         */
         const queryBuilder = this.postRepository.createQueryBuilder('p');
         queryBuilder.innerJoin('p.blog', 'b');
-        queryBuilder.leftJoin('public.post_likes', 'l', 'l.post_id = p.id AND l.user_id = :sentUserId',
+        queryBuilder.leftJoin('post_likes', 'l', 'l.post_id = p.id AND l.user_id = :sentUserId',
             { sentUserId: userId ?? null });
 
         // базовые условия (soft delete + конкретный блог)

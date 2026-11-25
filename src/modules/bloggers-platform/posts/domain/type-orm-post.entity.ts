@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Blog } from '../../blogs/domain/type-orm-blog.entity';
 import { BaseDBEntity } from '../../../../core/postgres_db_entities/baseDBEntity';
+import { SQLPost } from './sql-post.entitry';
 
 @Entity('posts')
 export class Post extends BaseDBEntity {
@@ -25,6 +26,44 @@ export class Post extends BaseDBEntity {
     @ManyToOne(() => Blog, (blog) => blog.posts, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'blog_id' })
     blog: Blog;
+
+
+    static fromDomainToEntity(domainPost: SQLPost): Post {
+        const entity = new Post();
+
+        if (domainPost.id) {
+            entity.id = domainPost.id;
+        }
+
+        entity.blog_id = domainPost.blogId;
+        entity.title = domainPost.title;
+        entity.short_description = domainPost.shortDescription;
+        entity.content = domainPost.content;
+        entity.likes_count = domainPost.likesCount ?? 0;
+        entity.dislikes_count = domainPost.dislikesCount ?? 0;
+
+        if (domainPost.createdAt) entity.created_at = new Date(domainPost.createdAt);
+        if (domainPost.updatedAt) entity.updated_at = new Date(domainPost.updatedAt);
+        entity.deleted_at = domainPost.deletedAt ? new Date(domainPost.deletedAt) : null;
+
+        return entity;
+    }
+
+
+    toDomain(): SQLPost {
+        return SQLPost.reconstructInstance({
+            id: this.id,
+            blog_id: this.blog_id,
+            title: this.title,
+            short_description: this.short_description,
+            content: this.content,
+            likes_count: this.likes_count,
+            dislikes_count: this.dislikes_count,
+            created_at: this.created_at,
+            updated_at: this.updated_at,
+            deleted_at: this.deleted_at,
+        });
+    }
 }
 
 // -- auto-generated definition

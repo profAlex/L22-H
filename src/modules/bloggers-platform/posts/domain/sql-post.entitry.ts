@@ -40,17 +40,21 @@ export class SQLPost {
 
         post.id = raw.id;
         post.title = raw.title;
-        post.shortDescription = raw.short_description; // snake_case -> camelCase
+        post.shortDescription = raw.shortDescription ?? raw.short_description;
         post.content = raw.content;
-        post.blogId = raw.blog_id;
-        post.likesCount = Number(raw.likes_count ?? raw.likesCount ?? 0);
-        post.dislikesCount = Number(raw.dislikes_count ?? raw.dislikesCount ?? 0);
+        post.blogId = raw.blogId ?? raw.blog_id;
 
-        // Валидация дат
-        post.createdAt = raw.created_at ? new Date(raw.created_at) : new Date();
-        post.updatedAt = raw.updated_at ? new Date(raw.updated_at) : new Date();
-        // Защита от new Date(null) -> 1970 год
-        post.deletedAt = raw.deleted_at ? new Date(raw.deleted_at) : null;
+        post.likesCount = Number(raw.likesCount ?? raw.likes_count ?? 0);
+        post.dislikesCount = Number(raw.dislikesCount ?? raw.dislikes_count ?? 0);
+
+        // Безопасно вытаскиваем даты из обоих форматов
+        const rawCreatedAt = raw.createdAt ?? raw.created_at;
+        const rawUpdatedAt = raw.updatedAt ?? raw.updated_at;
+        const rawDeletedAt = raw.deletedAt ?? raw.deleted_at;
+
+        post.createdAt = rawCreatedAt ? new Date(rawCreatedAt) : new Date();
+        post.updatedAt = rawUpdatedAt ? new Date(rawUpdatedAt) : new Date();
+        post.deletedAt = rawDeletedAt ? new Date(rawDeletedAt) : null;
 
         return post;
     }

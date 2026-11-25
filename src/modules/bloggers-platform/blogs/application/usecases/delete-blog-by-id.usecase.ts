@@ -21,7 +21,7 @@ export class DeleteBlogByIdCommandHandler implements ICommandHandler<DeleteBlogB
     async execute(command: DeleteBlogByIdCommand): Promise<void> {
         const { blogId } = command;
 
-        // 1. Находим доменную сущность в CommandRepository
+        // находим доменную сущность в CommandRepository
         const blog = await this.blogsCommandRepository.SQLfindBlogById(blogId);
 
         if (!blog) {
@@ -34,7 +34,7 @@ export class DeleteBlogByIdCommandHandler implements ICommandHandler<DeleteBlogB
         // вызываем доменный метод у самой сущности (изменяет поля deletedAt)
         blog.makeDeleted();
 
-        // 3. Сохраняем измененную сущность обратно в БД
+        // сохраняем измененную сущность обратно в БД
         await this.blogsCommandRepository.SQLsaveUpdate(blog);
     }
 }

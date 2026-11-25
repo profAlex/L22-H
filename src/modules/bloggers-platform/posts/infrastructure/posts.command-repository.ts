@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { SQLPost } from '../domain/sql-post.entitry';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PostQueryRawDto } from './query/posts.query-repository';
 import { CounterDirection } from '../../likes/infrastructure/comment-likes.command-repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Post } from '../domain/type-orm-post.entity';
 
 
 @Injectable()
 export class PostsCommandRepository {
     constructor(
         private readonly dataSource: DataSource,
+        @InjectRepository(Post)
+        private readonly postRepository: Repository<Post>,
     ) {}
 
 
@@ -50,89 +54,219 @@ export class PostsCommandRepository {
     }
 
 
-    async SQLsaveCreate(post: Omit<SQLPost, 'id'>): Promise<string> {
-        const query = `
-            INSERT INTO public.posts (
-                title,
-                short_description,
-                content,
-                blog_id,
-                likes_count,
-                dislikes_count,
-                created_at,
-                updated_at,
-                deleted_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING id;
-        `;
+    // async SQLsaveCreate(post: Omit<SQLPost, 'id'>): Promise<string> {
+    //     const query = `
+    //         INSERT INTO public.posts (
+    //             title,
+    //             short_description,
+    //             content,
+    //             blog_id,
+    //             likes_count,
+    //             dislikes_count,
+    //             created_at,
+    //             updated_at,
+    //             deleted_at
+    //         )
+    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    //         RETURNING id;
+    //     `;
+    //
+    //     const queryParams = [
+    //         post.title,
+    //         post.shortDescription,
+    //         post.content,
+    //         post.blogId,
+    //         post.likesCount ?? 0,
+    //         post.dislikesCount ?? 0,
+    //         post.createdAt ? new Date(post.createdAt) : new Date(),
+    //         post.updatedAt ? new Date(post.updatedAt) : new Date(),
+    //         post.deletedAt ? new Date(post.deletedAt) : null, // Защита от undefined
+    //     ];
+    //
+    //     const result = await this.dataSource.query(query, queryParams);
+    //     return result[0].id;
+    // }
 
-        const queryParams = [
-            post.title,
-            post.shortDescription,
-            post.content,
-            post.blogId,
-            post.likesCount ?? 0,
-            post.dislikesCount ?? 0,
-            post.createdAt ? new Date(post.createdAt) : new Date(),
-            post.updatedAt ? new Date(post.updatedAt) : new Date(),
-            post.deletedAt ? new Date(post.deletedAt) : null, // Защита от undefined
-        ];
 
-        const result = await this.dataSource.query(query, queryParams);
-        return result[0].id;
+    // async SQLsaveCreate(post: Omit<SQLPost, 'id'>): Promise<string> {
+    //     const query = `
+    //         INSERT INTO public.posts (
+    //             title,
+    //             short_description,
+    //             content,
+    //             blog_id,
+    //             likes_count,
+    //             dislikes_count,
+    //             created_at,
+    //             updated_at,
+    //             deleted_at
+    //         )
+    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    //         RETURNING id;
+    //     `;
+    //
+    //     const queryParams = [
+    //         post.title,
+    //         post.shortDescription,
+    //         post.content,
+    //         post.blogId,
+    //         post.likesCount ?? 0,
+    //         post.dislikesCount ?? 0,
+    //         post.createdAt ? new Date(post.createdAt) : new Date(),
+    //         post.updatedAt ? new Date(post.updatedAt) : new Date(),
+    //         post.deletedAt ? new Date(post.deletedAt) : null, // Защита от undefined
+    //     ];
+    //
+    //     const result = await this.dataSource.query(query, queryParams);
+    //     return result[0].id;
+    // }
+
+
+    async SQLsaveCreate(post: SQLPost): Promise<string> {
+        // сначала конвертируем доменную модель в TypeORM сущность
+        const postEntity = Post.fromDomainToEntity(post);
+
+        // сохраняем через стандартный .save()
+        const savedEntity = await this.postRepository.save(postEntity);
+
+        // возвращаем сгенерированный базой ID (или тот который мы передали внутри доменной сущности)
+        return savedEntity.id;
     }
+
+
+
+
+    // async SQLsaveUpdate(post: SQLPost): Promise<void> {
+    //     const query = `
+    //         UPDATE public.posts
+    //         SET title = $2,
+    //             short_description = $3,
+    //             content = $4,
+    //             likes_count = $5,
+    //             dislikes_count = $6,
+    //             updated_at = $7,
+    //             deleted_at = $8
+    //         WHERE id = $1;
+    //     `;
+    //
+    //     const queryParams = [
+    //         post.id,
+    //         post.title,
+    //         post.shortDescription,
+    //         post.content,
+    //         post.likesCount ?? 0,
+    //         post.dislikesCount ?? 0,
+    //         post.updatedAt ? new Date(post.updatedAt) : new Date(),
+    //         post.deletedAt ? new Date(post.deletedAt) : null, // Защита от undefined
+    //     ];
+    //
+    //     await this.dataSource.query(query, queryParams);
+    // }
 
 
     async SQLsaveUpdate(post: SQLPost): Promise<void> {
-        const query = `
-            UPDATE public.posts
-            SET title = $2,
-                short_description = $3,
-                content = $4,
-                likes_count = $5,
-                dislikes_count = $6,
-                updated_at = $7,
-                deleted_at = $8
-            WHERE id = $1;
-        `;
+        // сначала конвертируем доменную модель в TypeORM сущность
+        const postEntity = Post.fromDomainToEntity(post);
 
-        const queryParams = [
-            post.id,
-            post.title,
-            post.shortDescription,
-            post.content,
-            post.likesCount ?? 0,
-            post.dislikesCount ?? 0,
-            post.updatedAt ? new Date(post.updatedAt) : new Date(),
-            post.deletedAt ? new Date(post.deletedAt) : null, // Защита от undefined
-        ];
+        // сохраняем через стандартный .save()
+        await this.postRepository.save(postEntity);
 
-        await this.dataSource.query(query, queryParams);
+        // if (!post.id) {
+        //     console.warn('Cannot update post without ID');
+        // }
+        //
+        // const result = await this.postRepository.update(
+        //     { id: post.id }, // или просто post.id
+        //     {
+        //         title: post.title,
+        //         short_description: post.shortDescription,
+        //         content: post.content,
+        //         updated_at: post.updatedAt ?? new Date(),
+        //     },
+        // );
+        //
+        // // Полезно для отладки: если affected === 0, значит пост с таким ID вообще не нашелся в базе
+        // if (result.affected === 0) {
+        //     console.warn(`Post with id ${post.id} was not found for update`);
+        // }
     }
+
+    async SQLsoftDelete(post: SQLPost): Promise<void> {
+        // сначала конвертируем доменную модель в TypeORM сущность
+        const postEntity = Post.fromDomainToEntity(post);
+
+        // сохраняем через стандартный .save()
+        await this.postRepository.save(postEntity);
+
+        // if (!post.id) {
+        //     console.warn('Cannot delete post without ID');
+        // }
+        //
+        // const result = await this.postRepository.update(
+        //     { id: post.id },
+        //     { deleted_at: new Date() },
+        // );
+        //
+        // // Полезно для отладки: если affected === 0, значит пост с таким ID вообще не нашелся в базе
+        // if (result.affected === 0) {
+        //     console.warn(`Post with id ${post.id} was not deleted cuz not found`);
+        // }
+    }
+
+    // async SQLfindSinglePostById({postId, blogId}:{ postId: string, blogId: string}): Promise<SQLPost | null> {
+    //
+    //     const findQuery = `
+    //         SELECT
+    //                 p.id,
+    //                 p.title,
+    //                 p.short_description,
+    //                 p.content,
+    //                 p.blog_id,
+    //                 p.likes_count,
+    //                 p.dislikes_count,
+    //                 p.created_at,
+    //                 p.updated_at,
+    //                 p.deleted_at
+    //         FROM public.posts p
+    //         JOIN public.blogs b ON p.blog_id = b.id
+    //         WHERE p.id = $1 AND p.blog_id = $2 AND b.deleted_at IS NULL AND p.deleted_at IS NULL
+    //         LIMIT 1;
+    //     `;
+    //
+    //     const [resultRow] = await this.dataSource.query<PostQueryRawDto[]>(findQuery, [postId, blogId]);
+    //
+    //     if (!resultRow) {
+    //         return null;
+    //     }
+    //
+    //     return SQLPost.reconstructInstance(resultRow);
+    // }
 
 
     async SQLfindSinglePostById({postId, blogId}:{ postId: string, blogId: string}): Promise<SQLPost | null> {
 
-        const findQuery = `
-            SELECT 
-                    p.id,
-                    p.title,
-                    p.short_description,
-                    p.content,
-                    p.blog_id,
-                    p.likes_count,
-                    p.dislikes_count,
-                    p.created_at,
-                    p.updated_at,
-                    p.deleted_at
-            FROM public.posts p
-            JOIN public.blogs b ON p.blog_id = b.id
-            WHERE p.id = $1 AND p.blog_id = $2 AND b.deleted_at IS NULL AND p.deleted_at IS NULL
-            LIMIT 1;
-        `;
+        const queryBuilder = this.postRepository.createQueryBuilder('p');
 
-        const [resultRow] = await this.dataSource.query<PostQueryRawDto[]>(findQuery, [postId, blogId]);
+        queryBuilder.innerJoin('p.blog', 'b');
+        queryBuilder.where('b.deleted_at IS NULL');
+        queryBuilder.andWhere('p.deleted_at IS NULL');
+        queryBuilder.andWhere('p.id = :sentPostId', {sentPostId: postId});
+        queryBuilder.andWhere('p.blog_id = :sentBlogId', {sentBlogId: blogId});
+
+        queryBuilder.select([
+            "p.id AS \"id\"",
+            "p.title AS \"title\"",
+            "p.short_description AS \"shortDescription\"",
+            "p.content AS \"content\"",
+            "p.blog_id AS \"blogId\"",
+            "p.likes_count AS \"likesCount\"",
+            "p.dislikes_count AS \"dislikesCount\"",
+            "p.created_at AS \"createdAt\"",
+            "p.updated_at AS \"updatedAt\"",
+            "p.deleted_at AS \"deletedAt\""
+        ]);
+
+        const resultRow = await queryBuilder.getRawOne();
 
         if (!resultRow) {
             return null;
@@ -140,6 +274,7 @@ export class PostsCommandRepository {
 
         return SQLPost.reconstructInstance(resultRow);
     }
+
 
     async SQLifPostExists(postId: string): Promise<boolean> {
         const query = `
